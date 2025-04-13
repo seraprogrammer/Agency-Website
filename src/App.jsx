@@ -1,328 +1,40 @@
-import React, { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  setDoc,
-  doc,
-  getDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { h, signal, effect } from "./olova.js";
 
-// Components
-import Home from "./components/Home";
-import Login from "./components/Login";
-import PostDetail from "./components/PostDetail";
-import CreatePost from "./components/CreatePost";
-import Subscription from "./components/Subscription";
-import Navbar from "./components/Navbar";
+export default function App() {
+  const count = signal(0);
 
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyCuPfSWJONcXD1jmYcMHizxcyooWZc6y00",
-  authDomain: "store-e36c9.firebaseapp.com",
-  projectId: "store-e36c9",
-  storageBucket: "store-e36c9.firebasestorage.app",
-  messagingSenderId: "688140049437",
-  appId: "1:688140049437:web:2bbabf1e5070bac4ea7af4",
-  measurementId: "G-9FF1E07Y6W",
-};
-
-// List of admin emails
-const ADMIN_EMAILS = [
-  // Add your admin emails here
-  "olovajs@gmail.com",
-  // You can add more admin emails as needed
-];
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
-
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [posts, setPosts] = useState([]);
-  const [subscriptionValid, setSubscriptionValid] = useState(false);
-  const [purchasedPosts, setPurchasedPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
-      setUser(currentUser);
-      if (currentUser) {
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setIsAdmin(data.role === "admin");
-
-          const now = new Date().getTime();
-          setSubscriptionValid(
-            data.subscriptionEnd && data.subscriptionEnd > now
-          );
-
-          // Load purchased posts if any
-          if (data.purchasedPosts) {
-            setPurchasedPosts(data.purchasedPosts);
-          }
-        }
-      } else {
-        setIsAdmin(false);
-        setSubscriptionValid(false);
-        setPurchasedPosts([]);
-      }
-      setLoading(false);
-    });
-
-    fetchPosts();
-
-    return () => unsubscribe();
-  }, []);
-
-  const fetchPosts = async () => {
-    const querySnapshot = await getDocs(collection(db, "posts"));
-    const postList = [];
-    querySnapshot.forEach((doc) => {
-      postList.push({ id: doc.id, ...doc.data() });
-    });
-    setPosts(postList);
-  };
-
-  const handleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const userRef = doc(db, "users", result.user.uid);
-      const userSnap = await getDoc(userRef);
-
-      // Check if user's email is in the admin list
-      const isAdminEmail = ADMIN_EMAILS.includes(result.user.email);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          role: isAdminEmail ? "admin" : "user",
-          email: result.user.email,
-          subscriptionEnd: 0,
-          purchasedPosts: [],
-        });
-      } else {
-        // Update role if user's email is in admin list but not marked as admin yet
-        const userData = userSnap.data();
-        if (isAdminEmail && userData.role !== "admin") {
-          await setDoc(userRef, {
-            ...userData,
-            role: "admin",
-          });
-        }
-      }
-
-      // Refresh user state
-      if (isAdminEmail) {
-        setIsAdmin(true);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setUser(null);
-    setIsAdmin(false);
-    setSubscriptionValid(false);
-    setPurchasedPosts([]);
-  };
-
-  const handleCreatePost = async (title, imageUrl, content) => {
-    if (content.trim()) {
-      await addDoc(collection(db, "posts"), {
-        title: title,
-        content: content,
-        imageUrl: imageUrl,
-        createdAt: serverTimestamp(),
-        author: user.displayName,
-        isAdminPost: true,
-      });
-      fetchPosts();
-      return true;
-    }
-    return false;
-  };
-
-  const handleBuySubscription = async () => {
-    if (user) {
-      const oneWeekLater = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        await setDoc(userRef, {
-          ...userData,
-          role: isAdmin ? "admin" : "user",
-          subscriptionEnd: oneWeekLater,
-        });
-      } else {
-        await setDoc(userRef, {
-          role: isAdmin ? "admin" : "user",
-          subscriptionEnd: oneWeekLater,
-          purchasedPosts: [],
-        });
-      }
-
-      setSubscriptionValid(true);
-    }
-  };
-
-  const handleBuySinglePost = async (postId) => {
-    if (user) {
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        const updatedPurchasedPosts = [
-          ...(userData.purchasedPosts || []),
-          postId,
-        ];
-
-        await setDoc(userRef, {
-          ...userData,
-          purchasedPosts: updatedPurchasedPosts,
-        });
-
-        setPurchasedPosts(updatedPurchasedPosts);
-      }
-    }
-  };
-
-  const canViewFullPost = (postId) => {
-    return isAdmin || subscriptionValid || purchasedPosts.includes(postId);
-  };
-
-  const getContentPreview = (content) => {
-    const lines = content.split("\n").filter((line) => line.trim() !== "");
-    return lines.slice(0, 3).join("\n");
-  };
-
-  const isContentTruncated = (content) => {
-    const lines = content.split("\n").filter((line) => line.trim() !== "");
-    return lines.length > 3;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  effect(() => {
+    console.log(count());
+  });
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <Navbar user={user} isAdmin={isAdmin} handleLogout={handleLogout} />
+    <div>
+      <h1>{() => count()}</h1>
+      <button onclick={() => count.set(count() + 1)}>Click me!</button>
 
-        <main className="pb-12">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Home
-                  user={user}
-                  posts={posts}
-                  isAdmin={isAdmin}
-                  subscriptionValid={subscriptionValid}
-                  canViewFullPost={canViewFullPost}
-                />
-              }
-            />
-            <Route
-              path="/login"
-              element={
-                user ? <Navigate to="/" /> : <Login handleLogin={handleLogin} />
-              }
-            />
-            <Route
-              path="/post/:id"
-              element={
-                user ? (
-                  <PostDetail
-                    posts={posts}
-                    canViewFullPost={canViewFullPost}
-                    getContentPreview={getContentPreview}
-                    isContentTruncated={isContentTruncated}
-                    handleBuySinglePost={handleBuySinglePost}
-                  />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/create-post"
-              element={
-                user && isAdmin ? (
-                  <CreatePost
-                    handleCreatePost={handleCreatePost}
-                    isAdmin={isAdmin}
-                  />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-            <Route
-              path="/subscription"
-              element={
-                user ? (
-                  <Subscription
-                    handleBuySubscription={handleBuySubscription}
-                    subscriptionValid={subscriptionValid}
-                  />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-          </Routes>
-        </main>
+      <p>This is inside the Helper component</p>
 
-        <footer className="bg-gray-800 text-white py-8">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="mb-4 md:mb-0">
-                <h3 className="text-xl font-bold mb-2">
-                  Premium Blog Platform
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  High-quality content worth paying for
-                </p>
-              </div>
-              <div className="text-sm text-gray-400">
-                &copy; {new Date().getFullYear()} Your Company. All rights
-                reserved.
-              </div>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </BrowserRouter>
+      {/* SVG element example */}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-air-vent-icon lucide-air-vent"
+      >
+        <path d="M6 12H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <path d="M6 8h12" />
+        <path d="M18.3 17.7a2.5 2.5 0 0 1-3.16 3.83 2.53 2.53 0 0 1-1.14-2V12" />
+        <path d="M6.6 15.6A2 2 0 1 0 10 17v-5" />
+      </svg>
+
+      {/* Another content */}
+      <button>Another button inside Helper</button>
+    </div>
   );
-};
-
-export default App;
+}
