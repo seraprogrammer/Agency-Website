@@ -5,7 +5,9 @@ import React from 'react'
 
 function Mainlayoutes() {
   return (
-    <div>Mainlayoutes</div>
+    <div>Mainlayoutes
+      
+    </div>
   )
 }
 
