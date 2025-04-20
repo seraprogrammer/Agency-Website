@@ -15,7 +15,7 @@ const MarqueeSection = () => {
         <span className="mx-10">UI/UX Design</span>
         <span className="mx-10">SEO</span>
       </Marquee>
-      <div className="-mx-4 mt-4">
+      <div className="-mx-4 mt-2">
         <img className="w-full" src="./img5-team.jpg" alt="" />
       </div>
     </>

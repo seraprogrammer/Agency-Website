@@ -55,7 +55,7 @@ const Services = () => {
   ];
 
   return (
-    <div className="bg-[url('./img2-home.jpg')] bg-center bg-cover pt-[500px] pb-[200px] -m-4 mt-100 relative">
+    <div className="bg-[url('./service-bg.jpg')] bg-center bg-cover pt-[500px] pb-[200px] -m-4 mt-100 relative">
       <div className="absolute  m-4 -top-70">
         <img className="w-full rounded-lg " src="./img1-home.jpg" alt="" />
       </div>
