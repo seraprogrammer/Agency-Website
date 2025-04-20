@@ -2,7 +2,7 @@ import React from "react";
 
 const Portfolio = () => {
   return (
-    <div className="px-20 py-40 flex items-start gap-10">
+    <div className="px-20 py-40 flex items-start gap-10 bg-[url('./img1-home.jpg')]">
       <div className="sticky top-10 flex-2/5">
         <h2 className="text-8xl font-semibold text-neutral-800">
           Award winning creativity
