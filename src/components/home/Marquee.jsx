@@ -5,9 +5,8 @@ const MarqueeSection = () => {
   return (
     <>
       <Marquee
-        className="text-8xl text-gray-300"
+        className="text-7xl text-gray-300 overflow-hidden  items-center leading-tight"
         speed={100}
-        pauseOnHover
         gradient={true}
       >
         <span className="mx-10">Marketing</span>
@@ -15,7 +14,7 @@ const MarqueeSection = () => {
         <span className="mx-10">UI/UX Design</span>
         <span className="mx-10">SEO</span>
       </Marquee>
-      <div className="-mx-4 mt-2">
+      <div className="-mx-4 mt-1">
         <img className="w-full" src="./img5-team.jpg" alt="" />
       </div>
     </>
