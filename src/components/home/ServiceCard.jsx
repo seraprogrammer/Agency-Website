@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 
 const ServiceCard = ({ logoUrl, title, description, link, tags }) => {
   return (
-    <div className="max-w-md transition-all">
-      <img src={logoUrl} alt="" />
+    <div className="max-w-md transition-all hover:[&>img]:scale-110">
+      <img src={logoUrl} alt="" className="transition duration-300" />
       <h2 className="mt-5 text-2xl font-semibold">{title}</h2>
       <p className=" mt-4 text-neutral-800">{description}</p>
 
